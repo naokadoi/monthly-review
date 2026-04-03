@@ -6,6 +6,73 @@
 <title>月次振り返りダッシュボード</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
+/* ── LOCK SCREEN ── */
+#lockScreen {
+  position: fixed;
+  inset: 0;
+  background: #f8f9fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.lock-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 340px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+  text-align: center;
+}
+.lock-icon {
+  font-size: 36px;
+  margin-bottom: 16px;
+}
+.lock-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+.lock-sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+.lock-input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color .15s;
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+}
+.lock-input:focus { border-color: #6366f1; }
+.lock-btn {
+  width: 100%;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.lock-btn:hover { background: #4f46e5; }
+.lock-error {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 10px;
+  min-height: 18px;
+}
+</style>
+<style>
 :root {
   --bg: #f8f9fb;
   --surface: #ffffff;
@@ -307,6 +374,18 @@ body {
     <span class="badge" id="headerBadge">— 読み込み中</span>
   </div>
 </header>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">月次レビュー</div>
+    <div class="lock-sub">パスワードを入力してください</div>
+    <input type="password" class="lock-input" id="pwInput" placeholder="••••••••" autocomplete="current-password" />
+    <button class="lock-btn" id="pwBtn">ログイン</button>
+    <div class="lock-error" id="pwError"></div>
+  </div>
+</div>
 
 <main class="page" id="app">
   <div class="empty">
@@ -651,6 +730,47 @@ function drawWeeklyBar(data) {
   });
 }
 
+// ─── PASSWORD ──────────────────────────────────────────────────────────────
+// SHA-256 hash of the password. To change: run `echo -n "新パスワード" | shasum -a 256`
+const PASSWORD_HASH = 'c60d771b500d1b4f8a1c8438b0e0f8d89ee8bac756a768efd4057b7011a367d5';
+const SESSION_KEY = 'monthly_review_auth';
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function setupLock() {
+  // Already authenticated this session
+  if (sessionStorage.getItem(SESSION_KEY) === PASSWORD_HASH) {
+    document.getElementById('lockScreen').style.display = 'none';
+    return;
+  }
+
+  const input = document.getElementById('pwInput');
+  const btn   = document.getElementById('pwBtn');
+  const err   = document.getElementById('pwError');
+
+  async function tryUnlock() {
+    const hash = await sha256(input.value);
+    if (hash === PASSWORD_HASH) {
+      sessionStorage.setItem(SESSION_KEY, hash);
+      document.getElementById('lockScreen').style.display = 'none';
+      init();
+    } else {
+      err.textContent = 'パスワードが違います';
+      input.value = '';
+      input.focus();
+      setTimeout(() => { err.textContent = ''; }, 2000);
+    }
+  }
+
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+  input.focus();
+  return true; // Don't call init() yet
+}
+
 // ─── INIT ──────────────────────────────────────────────────────────────────
 async function init() {
   const index = await loadIndex();
@@ -676,10 +796,10 @@ async function init() {
   }
 }
 
-init().catch(err => {
-  $('app').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">データの読み込みに失敗しました。ローカルサーバーで開いてください。</div></div>`;
-  console.error(err);
-});
+// Lock first; init() is called inside setupLock after successful auth
+setupLock().then(waiting => {
+  if (!waiting) init(); // Already authenticated (sessionStorage hit)
+}).catch(console.error);
 </script>
 </body>
 </html>
