@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月次振り返りダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f8f9fb;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+  --text: #111827;
+  --muted: #6b7280;
+  --muted-light: #9ca3af;
+  --indigo: #6366f1;
+  --cyan: #06b6d4;
+  --violet: #8b5cf6;
+  --amber: #f59e0b;
+  --rose: #f43f5e;
+  --indigo-light: #eef2ff;
+  --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.05);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Hiragino Sans', 'Noto Sans JP', -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--indigo);
+  letter-spacing: -0.3px;
+}
+.logo span { color: var(--text); }
+
+.month-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.month-selector:hover { border-color: var(--indigo); }
+.month-selector select {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.header-right { display: flex; align-items: center; gap: 8px; }
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--indigo-light);
+  color: var(--indigo);
+}
+
+/* ── LAYOUT ── */
+.page { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* ── KPI ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.kpi:nth-child(1)::before { background: var(--indigo); }
+.kpi:nth-child(2)::before { background: var(--cyan); }
+.kpi:nth-child(3)::before { background: var(--amber); }
+.kpi:nth-child(4)::before { background: var(--violet); }
+
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-value {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 6px 0 4px;
+  letter-spacing: -1px;
+}
+.kpi:nth-child(1) .kpi-value { color: var(--indigo); }
+.kpi:nth-child(2) .kpi-value { color: var(--cyan); }
+.kpi:nth-child(3) .kpi-value { color: var(--amber); }
+.kpi:nth-child(4) .kpi-value { color: var(--violet); }
+.kpi-sub { font-size: 11px; color: var(--muted-light); }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 18px;
+}
+
+.row2 { display: grid; grid-template-columns: 300px 1fr; gap: 16px; margin-bottom: 16px; }
+.row1 { margin-bottom: 16px; }
+
+/* ── DONUT + LEGEND ── */
+.donut-wrap { display: flex; flex-direction: column; align-items: center; }
+.donut-canvas-wrap { width: 180px; height: 180px; margin: 0 auto 16px; }
+.proj-list { width: 100%; }
+.proj-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.proj-item:last-child { border-bottom: none; }
+.proj-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.proj-name { font-size: 13px; flex: 1; }
+.proj-hours { font-size: 13px; font-weight: 600; }
+.proj-pct {
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 38px;
+  text-align: right;
+}
+
+/* ── HEATMAP ── */
+.heatmap-outer { overflow-x: auto; padding-bottom: 4px; }
+.heatmap-grid {
+  display: inline-grid;
+  grid-template-columns: 28px repeat(31, 26px);
+  grid-template-rows: 18px repeat(7, 26px);
+  gap: 3px;
+}
+.hm-label {
+  font-size: 10px;
+  color: var(--muted-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hm-cell {
+  border-radius: 4px;
+  position: relative;
+  cursor: default;
+  transition: transform .12s, box-shadow .12s;
+}
+.hm-cell.active:hover {
+  transform: scale(1.25);
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.hm-cell[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.hm-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted-light);
+}
+.hm-legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+/* ── BAR & STACKED ── */
+.chart-canvas-wrap { position: relative; }
+
+/* ── SKELETON ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--border) 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── COMPARE BADGE ── */
+.compare-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.compare-bar select {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+}
+
+/* ── EMPTY ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--muted-light);
+  gap: 8px;
+}
+.empty-icon { font-size: 40px; }
+.empty-text { font-size: 14px; }
+
+@media (max-width: 768px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .row2 { grid-template-columns: 1fr; }
+  .page { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">月次<span>レビュー</span></div>
+    <div class="month-selector">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <select id="monthSelect"></select>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge" id="headerBadge">— 読み込み中</span>
+  </div>
+</header>
+
+<main class="page" id="app">
+  <div class="empty">
+    <div class="empty-icon">⏳</div>
+    <div class="empty-text">データを読み込んでいます…</div>
+  </div>
+</main>
+
+<script>
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+};
+
+const COLORS = {
+  'Webデザイン': '#6366f1',
+  'SNS':         '#06b6d4',
+  'A++':         '#8b5cf6',
+  'その他':      '#f59e0b',
+  '読書':        '#f43f5e',
+};
+
+const HM_COLORS = ['#f1f5f9','#bfdbfe','#818cf8','#6366f1','#3730a3'];
+function hmColor(h) {
+  if (!h || h === 0) return '#f8fafc';
+  if (h < 2)  return '#dbeafe';
+  if (h < 4)  return '#93c5fd';
+  if (h < 6)  return '#6366f1';
+  return '#3730a3';
+}
+
+let charts = {};
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+// ─── LOAD INDEX ────────────────────────────────────────────────────────────
+async function loadIndex() {
+  const res = await fetch('./data/index.json');
+  return await res.json();
+}
+
+async function loadMonth(key) {
+  const res = await fetch(`./data/${key}.json`);
+  return await res.json();
+}
+
+// ─── RENDER ────────────────────────────────────────────────────────────────
+function renderApp(data) {
+  destroyCharts();
+  const app = $('app');
+  app.innerHTML = '';
+
+  // header badge
+  $('headerBadge').textContent = `稼働 ${data.kpi.activeDays}日 / ${data.kpi.totalHoursDisplay}h`;
+
+  // ── KPI ────────────────────────────────────────────────────────────────
+  const kpiGrid = el('div', 'kpi-grid');
+  const kpis = [
+    { label: '総作業時間', value: data.kpi.totalHoursDisplay + 'h', sub: `稼働 ${data.kpi.activeDays}日` },
+    { label: 'Figmaトレース', value: `${data.kpi.figmaCount}本`, sub: `#1〜#${data.kpi.figmaCount} 完走` },
+    { label: '平均稼働/日', value: `${data.kpi.avgHoursPerDay}h`, sub: '稼働日ベース' },
+    { label: '勉強会・イベント', value: `${data.kpi.eventsAttended}回`, sub: 'CSSNite×2 + α' },
+  ];
+  kpis.forEach(k => {
+    const d = el('div', 'kpi');
+    d.innerHTML = `<div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>`;
+    kpiGrid.appendChild(d);
+  });
+  app.appendChild(kpiGrid);
+
+  // ── ROW: Donut + Daily Bar ─────────────────────────────────────────────
+  const row2 = el('div', 'row2');
+
+  // --- Donut card ---
+  const donutCard = el('div', 'card');
+  donutCard.innerHTML = `<div class="card-title">プロジェクト分布</div>`;
+  const donutWrap = el('div', 'donut-wrap');
+  const donutCanvasWrap = el('div', 'donut-canvas-wrap');
+  const donutCanvas = el('canvas'); donutCanvas.id = 'donutChart';
+  donutCanvasWrap.appendChild(donutCanvas);
+  donutWrap.appendChild(donutCanvasWrap);
+
+  const projList = el('div', 'proj-list');
+  data.projects.forEach(p => {
+    const item = el('div', 'proj-item');
+    item.innerHTML = `
+      <div class="proj-dot" style="background:${p.color}"></div>
+      <span class="proj-name">${p.name}</span>
+      <span class="proj-hours">${p.hours.toFixed(1)}h</span>
+      <span class="proj-pct">${p.pct}%</span>`;
+    projList.appendChild(item);
+  });
+  donutWrap.appendChild(projList);
+  donutCard.appendChild(donutWrap);
+  row2.appendChild(donutCard);
+
+  // --- Daily stacked bar card ---
+  const barCard = el('div', 'card');
+  barCard.innerHTML = `<div class="card-title">日別作業時間</div>`;
+  const barWrap = el('div', 'chart-canvas-wrap');
+  const barCanvas = el('canvas'); barCanvas.id = 'dailyBar';
+  barWrap.appendChild(barCanvas);
+  barCard.appendChild(barWrap);
+  row2.appendChild(barCard);
+  app.appendChild(row2);
+
+  // ── ROW: Heatmap ─────────────────────────────────────────────────────
+  const hmCard = el('div', 'card row1');
+  hmCard.innerHTML = `<div class="card-title">アクティビティ ヒートマップ</div>`;
+  const hmOuter = el('div', 'heatmap-outer');
+  const hmGrid = el('div', 'heatmap-grid');
+  buildHeatmap(hmGrid, data);
+  hmOuter.appendChild(hmGrid);
+
+  const legend = el('div', 'hm-legend');
+  legend.innerHTML = `<span>少ない</span>`;
+  ['#f8fafc','#dbeafe','#93c5fd','#6366f1','#3730a3'].forEach(c => {
+    const s = el('div', 'hm-legend-swatch');
+    s.style.background = c;
+    s.style.border = '1px solid #e5e7eb';
+    legend.appendChild(s);
+  });
+  legend.innerHTML += `<span>多い</span>`;
+  ['#f8fafc','#dbeafe','#93c5fd','#6366f1','#3730a3'].forEach(c => {
+    const s = el('div', 'hm-legend-swatch');
+    s.style.background = c;
+    s.style.border = '1px solid #e5e7eb';
+    legend.appendChild(s);
+  });
+
+  // Rebuild legend cleanly
+  hmOuter.appendChild(buildLegend());
+  hmCard.appendChild(hmOuter);
+  app.appendChild(hmCard);
+
+  // ── ROW: Weekly stacked ───────────────────────────────────────────────
+  const weekCard = el('div', 'card row1');
+  weekCard.innerHTML = `<div class="card-title">週別 × カテゴリ積み上げ</div>`;
+  const weekWrap = el('div', 'chart-canvas-wrap');
+  const weekCanvas = el('canvas'); weekCanvas.id = 'weeklyBar';
+  weekWrap.appendChild(weekCanvas);
+  weekCard.appendChild(weekWrap);
+  app.appendChild(weekCard);
+
+  // ── Draw Charts (next tick) ───────────────────────────────────────────
+  requestAnimationFrame(() => {
+    drawDonut(data);
+    drawDailyBar(data);
+    drawWeeklyBar(data);
+  });
+}
+
+// ─── HEATMAP BUILD ─────────────────────────────────────────────────────────
+function buildHeatmap(grid, data) {
+  const year = parseInt(data.month.split('-')[0]);
+  const month = parseInt(data.month.split('-')[1]);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const startDow = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const dayNames = ['日','月','火','水','木','金','土'];
+
+  const hoursMap = {};
+  const eventsMap = data.calendarEvents || {};
+  Object.entries(data.daily).forEach(([k, v]) => {
+    const d = parseInt(k.split('-')[2]);
+    hoursMap[d] = v;
+  });
+
+  // Header row: empty label + day numbers
+  grid.appendChild(Object.assign(el('div', 'hm-label'), {}));
+  for (let d = 1; d <= daysInMonth; d++) {
+    const c = el('div', 'hm-label');
+    c.textContent = d;
+    c.style.fontSize = '9px';
+    grid.appendChild(c);
+  }
+
+  // 7 rows
+  for (let dow = 0; dow < 7; dow++) {
+    const label = el('div', 'hm-label');
+    label.textContent = dayNames[dow];
+    grid.appendChild(label);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const actualDow = (startDow + d - 1) % 7;
+      const cell = el('div', 'hm-cell');
+      if (actualDow === dow) {
+        const h = hoursMap[d] || 0;
+        cell.style.background = hmColor(h);
+        cell.style.border = '1px solid rgba(0,0,0,.04)';
+        cell.classList.add('active');
+        const dateKey = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const events = eventsMap[dateKey] ? eventsMap[dateKey].slice(0,3).join(' / ') : '';
+        const tip = h > 0
+          ? `${month}/${d}（${dayNames[dow]}）${h.toFixed(1)}h${events ? '\n' + events : ''}`
+          : `${month}/${d}（${dayNames[dow]}）休息日`;
+        cell.setAttribute('title', tip);
+      } else {
+        cell.style.background = 'transparent';
+      }
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function buildLegend() {
+  const wrap = el('div', 'hm-legend');
+  const swatches = ['#f8fafc','#dbeafe','#93c5fd','#6366f1','#3730a3'];
+  const labels = ['0h','〜2h','〜4h','〜6h','6h+'];
+  const span1 = el('span'); span1.textContent = '作業量：';
+  wrap.appendChild(span1);
+  swatches.forEach((c, i) => {
+    const s = el('div', 'hm-legend-swatch');
+    s.style.background = c;
+    s.style.border = '1px solid #e5e7eb';
+    s.title = labels[i];
+    wrap.appendChild(s);
+    const t = el('span'); t.textContent = labels[i]; t.style.marginRight = '8px';
+    wrap.appendChild(t);
+  });
+  return wrap;
+}
+
+// ─── CHARTS ────────────────────────────────────────────────────────────────
+function drawDonut(data) {
+  charts.donut = new Chart($('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: data.projects.map(p => p.name),
+      datasets: [{
+        data: data.projects.map(p => p.hours),
+        backgroundColor: data.projects.map(p => p.color),
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '72%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toFixed(1)}h (${data.projects[ctx.dataIndex].pct}%)` }
+      }},
+      animation: { duration: 700 }
+    }
+  });
+}
+
+function drawDailyBar(data) {
+  const allDates = Object.keys(data.daily).sort();
+  const labels = allDates.map(d => {
+    const parts = d.split('-');
+    return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+  });
+
+  const projectNames = data.projects.map(p => p.name);
+  const datasets = projectNames.map(name => ({
+    label: name,
+    data: allDates.map(date => {
+      return (data.dailyByProject[name] && data.dailyByProject[name][date]) || 0;
+    }),
+    backgroundColor: COLORS[name] || '#ccc',
+    borderRadius: 3,
+    borderSkipped: false,
+  }));
+
+  charts.daily = new Chart($('dailyBar'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { labels: { color: '#6b7280', font: { size: 11 }, boxWidth: 10, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(1)}h` } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+        y: { stacked: true, ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#f3f4f6' },
+             title: { display: true, text: '時間', color: '#9ca3af', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function drawWeeklyBar(data) {
+  const year = parseInt(data.month.split('-')[0]);
+  const month = parseInt(data.month.split('-')[1]);
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  // Build week ranges (Mon-Sun grouping)
+  const weekRanges = [];
+  const weekLabels = [];
+  for (let d = 1; d <= daysInMonth; ) {
+    const date = new Date(year, month - 1, d);
+    const dow = date.getDay(); // 0=Sun
+    const daysUntilSun = dow === 0 ? 6 : 7 - dow;
+    const endD = Math.min(d + daysUntilSun, daysInMonth);
+    weekRanges.push({ start: d, end: endD });
+    weekLabels.push(`W (${month}/${d}〜${month}/${endD})`);
+    d = endD + 1;
+  }
+
+  const projectNames = data.projects.map(p => p.name);
+  const datasets = projectNames.map(name => ({
+    label: name,
+    data: weekRanges.map(({ start, end }) => {
+      let sum = 0;
+      for (let d = start; d <= end; d++) {
+        const key = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        sum += (data.dailyByProject[name] && data.dailyByProject[name][key]) || 0;
+      }
+      return parseFloat(sum.toFixed(2));
+    }),
+    backgroundColor: COLORS[name] || '#ccc',
+    borderRadius: 4,
+    borderSkipped: false,
+  }));
+
+  charts.weekly = new Chart($('weeklyBar'), {
+    type: 'bar',
+    data: { labels: weekLabels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { labels: { color: '#6b7280', font: { size: 11 }, boxWidth: 10, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}h` } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+        y: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' },
+             title: { display: true, text: '時間', color: '#9ca3af' } }
+      }
+    }
+  });
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+async function init() {
+  const index = await loadIndex();
+  const sel = $('monthSelect');
+  index.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.key;
+    opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+
+  sel.addEventListener('change', async () => {
+    $('app').innerHTML = `<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">読み込み中…</div></div>`;
+    const data = await loadMonth(sel.value);
+    renderApp(data);
+  });
+
+  // Load latest month by default
+  if (index.length > 0) {
+    sel.value = index[index.length - 1].key;
+    const data = await loadMonth(sel.value);
+    renderApp(data);
+  }
+}
+
+init().catch(err => {
+  $('app').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">データの読み込みに失敗しました。ローカルサーバーで開いてください。</div></div>`;
+  console.error(err);
+});
+</script>
+</body>
+</html>
