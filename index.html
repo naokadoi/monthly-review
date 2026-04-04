@@ -350,8 +350,72 @@ body {
 .empty-icon { font-size: 40px; }
 .empty-text { font-size: 14px; }
 
+/* ── SNS SECTION ── */
+.sns-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  margin: 28px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sns-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.sns-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.sns-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.sns-kpi-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 12px 12px 0 0;
+}
+.sns-kpi .kpi-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.sns-kpi .kpi-value { font-size: 28px; font-weight: 800; line-height: 1.2; margin: 6px 0 4px; letter-spacing: -1px; }
+.sns-kpi .kpi-unit { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+.sns-kpi .kpi-sub { font-size: 11px; color: var(--muted-light); }
+
+.note-rank-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.note-rank-item:last-child { border-bottom: none; }
+.note-rank-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.note-rank-num { font-size: 11px; font-weight: 700; color: var(--muted-light); min-width: 20px; }
+.note-rank-title { font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-rank-date { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.note-rank-likes { font-size: 13px; font-weight: 700; min-width: 42px; text-align: right; flex-shrink: 0; }
+.note-rank-bar-wrap { height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+.note-rank-bar-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .sns-kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .row2 { grid-template-columns: 1fr; }
   .page { padding: 16px; }
 }
@@ -537,6 +601,9 @@ function renderApp(data) {
   weekWrap.appendChild(weekCanvas);
   weekCard.appendChild(weekWrap);
   app.appendChild(weekCard);
+
+  // ── SNS ─────────────────────────────────────────────────────────────
+  if (data.sns) renderSNS(data);
 
   // ── Draw Charts (next tick) ───────────────────────────────────────────
   requestAnimationFrame(() => {
@@ -725,6 +792,223 @@ function drawWeeklyBar(data) {
         x: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
         y: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: '#f3f4f6' },
              title: { display: true, text: '時間', color: '#9ca3af' } }
+      }
+    }
+  });
+}
+
+// ─── SNS SECTION ───────────────────────────────────────────────────────────
+const SNS_COLORS = {
+  note:      '#00d298',
+  x:         '#111827',
+  threads:   '#6b7280',
+  instagram: '#e1306c',
+};
+
+function renderSNS(data) {
+  const sns = data.sns;
+  const app = $('app');
+
+  // Section title
+  const title = el('div', 'sns-section-title');
+  title.textContent = 'SNS ダッシュボード';
+  app.appendChild(title);
+
+  // ── KPI cards ──────────────────────────────────────────────────────
+  const platforms = [
+    {
+      label: 'note',
+      color: SNS_COLORS.note,
+      value: sns.note?.followers ?? '—',
+      sub: `${sns.note?.posts ?? 0}記事 · 計${sns.note?.totalLikes ?? 0}いいね`,
+    },
+    {
+      label: 'X (Twitter)',
+      color: SNS_COLORS.x,
+      value: sns.x?.followers ?? '—',
+      sub: `約${sns.x?.estimatedPosts ?? 0}投稿 · 計~${sns.x?.estimatedLikes ?? 0}いいね`,
+    },
+    {
+      label: 'Threads',
+      color: SNS_COLORS.threads,
+      value: sns.threads?.followers ?? '—',
+      sub: sns.threads?.note ?? 'フォロワー数',
+    },
+    {
+      label: 'Instagram',
+      color: SNS_COLORS.instagram,
+      value: sns.instagram?.followers ?? '—',
+      sub: `${sns.instagram?.posts ?? 0}投稿 · 計${sns.instagram?.totalLikes ?? 0}いいね`,
+    },
+  ];
+
+  const kpiGrid = el('div', 'sns-kpi-grid');
+  platforms.forEach(p => {
+    const card = el('div', 'sns-kpi');
+    card.innerHTML = `
+      <div class="sns-kpi-bar" style="background:${p.color}"></div>
+      <div class="kpi-label">${p.label}</div>
+      <div class="kpi-value" style="color:${p.color}">${p.value}<span class="kpi-unit">人</span></div>
+      <div class="kpi-sub">${p.sub}</div>`;
+    kpiGrid.appendChild(card);
+  });
+  app.appendChild(kpiGrid);
+
+  // ── 2-col: Followers bar + Likes bar ───────────────────────────────
+  const row2 = el('div', 'row2');
+  row2.style.gridTemplateColumns = '1fr 1fr';
+
+  const follCard = el('div', 'card');
+  follCard.innerHTML = `<div class="card-title">フォロワー数比較</div>`;
+  const follWrap = el('div', 'chart-canvas-wrap');
+  const follCanvas = el('canvas'); follCanvas.id = 'snsFollowersBar';
+  follWrap.appendChild(follCanvas); follCard.appendChild(follWrap);
+  row2.appendChild(follCard);
+
+  const likeCard = el('div', 'card');
+  likeCard.innerHTML = `<div class="card-title">月間いいね合計比較</div>`;
+  const likeWrap = el('div', 'chart-canvas-wrap');
+  const likeCanvas = el('canvas'); likeCanvas.id = 'snsLikesBar';
+  likeWrap.appendChild(likeCanvas); likeCard.appendChild(likeWrap);
+  row2.appendChild(likeCard);
+
+  app.appendChild(row2);
+
+  // ── Instagram posts bar ────────────────────────────────────────────
+  if (sns.instagram?.topPosts?.length) {
+    const instaCard = el('div', 'card row1');
+    instaCard.innerHTML = `<div class="card-title">Instagram 投稿パフォーマンス <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px">■ 投稿 &nbsp;■ リール</span></div>`;
+    const instaWrap = el('div', 'chart-canvas-wrap');
+    const instaCanvas = el('canvas'); instaCanvas.id = 'instaPostsBar';
+    instaWrap.appendChild(instaCanvas); instaCard.appendChild(instaWrap);
+    app.appendChild(instaCard);
+  }
+
+  // ── note ranking ───────────────────────────────────────────────────
+  if (sns.note?.topPosts?.length) {
+    const noteCard = el('div', 'card row1');
+    noteCard.innerHTML = `<div class="card-title">note 人気記事ランキング</div>`;
+    const maxLikes = Math.max(...sns.note.topPosts.map(p => p.likes), 1);
+    sns.note.topPosts.forEach((post, i) => {
+      const item = el('div', 'note-rank-item');
+      item.innerHTML = `
+        <div class="note-rank-header">
+          <span class="note-rank-num">#${i + 1}</span>
+          <span class="note-rank-title">${post.title}</span>
+          <span class="note-rank-date">${post.date.substring(5).replace('-', '/')}</span>
+          <span class="note-rank-likes" style="color:${SNS_COLORS.note}">${post.likes} ❤️</span>
+        </div>
+        <div class="note-rank-bar-wrap">
+          <div class="note-rank-bar-fill" style="width:${Math.round(post.likes / maxLikes * 100)}%;background:${SNS_COLORS.note}"></div>
+        </div>`;
+      noteCard.appendChild(item);
+    });
+    app.appendChild(noteCard);
+  }
+
+  // Draw SNS charts
+  requestAnimationFrame(() => {
+    drawSNSFollowersBar(sns);
+    drawSNSLikesBar(sns);
+    if (sns.instagram?.topPosts?.length) drawInstaPostsBar(sns);
+  });
+}
+
+function drawSNSFollowersBar(sns) {
+  charts.snsFollowers = new Chart($('snsFollowersBar'), {
+    type: 'bar',
+    data: {
+      labels: ['note', 'X', 'Threads', 'Instagram'],
+      datasets: [{
+        data: [
+          sns.note?.followers ?? 0,
+          sns.x?.followers ?? 0,
+          sns.threads?.followers ?? 0,
+          sns.instagram?.followers ?? 0,
+        ],
+        backgroundColor: [SNS_COLORS.note, SNS_COLORS.x, SNS_COLORS.threads, SNS_COLORS.instagram],
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw}人` } }
+      },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+        y: { ticks: { color: '#374151', font: { size: 12, weight: '600' } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function drawSNSLikesBar(sns) {
+  charts.snsLikes = new Chart($('snsLikesBar'), {
+    type: 'bar',
+    data: {
+      labels: ['note', 'X (推定)', 'Instagram'],
+      datasets: [{
+        data: [
+          sns.note?.totalLikes ?? 0,
+          sns.x?.estimatedLikes ?? 0,
+          sns.instagram?.totalLikes ?? 0,
+        ],
+        backgroundColor: [SNS_COLORS.note, SNS_COLORS.x, SNS_COLORS.instagram],
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw}いいね` } }
+      },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+        y: { ticks: { color: '#374151', font: { size: 12, weight: '600' } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function drawInstaPostsBar(sns) {
+  const posts = sns.instagram.topPosts;
+  charts.instaPosts = new Chart($('instaPostsBar'), {
+    type: 'bar',
+    data: {
+      labels: posts.map(p => p.date.substring(5).replace('-', '/')),
+      datasets: [{
+        label: 'いいね',
+        data: posts.map(p => p.likes),
+        backgroundColor: posts.map(p => p.type === 'reel' ? '#06b6d4' : '#6366f1'),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => {
+              const p = posts[ctx[0].dataIndex];
+              return `${p.date.substring(5).replace('-','/')}（${p.type === 'reel' ? 'リール' : '投稿'}）`;
+            },
+            label: ctx => ` ${ctx.raw}いいね｜${posts[ctx.dataIndex].title}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+        y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#f3f4f6' },
+             title: { display: true, text: 'いいね', color: '#9ca3af', font: { size: 10 } } }
       }
     }
   });

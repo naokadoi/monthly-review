@@ -98,6 +98,44 @@
     "2026-03-30": ["1on1", "Figmaトレース#14", "note"],
     "2026-03-31": ["Figmaトレース#15", "note", "神宮開幕戦"]
   },
+  "sns": {
+    "note": {
+      "followers": 13,
+      "posts": 15,
+      "totalLikes": 44,
+      "topPosts": [
+        { "title": "#9日目 企業HP 横幅バリアブル", "date": "2026-03-23", "likes": 6 },
+        { "title": "#6日目 デザインの言語化", "date": "2026-03-17", "likes": 5 },
+        { "title": "#8日目 企業HP セクション機能", "date": "2026-03-19", "likes": 4 },
+        { "title": "#4日目", "date": "2026-03-12", "likes": 4 },
+        { "title": "#13日目 SmartHR", "date": "2026-03-29", "likes": 4 }
+      ]
+    },
+    "x": {
+      "followers": 37,
+      "estimatedPosts": 70,
+      "estimatedLikes": 47,
+      "topLikes": 4
+    },
+    "threads": {
+      "followers": 51,
+      "note": "3月投稿データはページ読み込み制限のため取得不可"
+    },
+    "instagram": {
+      "followers": 90,
+      "posts": 6,
+      "totalLikes": 76,
+      "avgLikesPerPost": 12.7,
+      "topPosts": [
+        { "title": "エンジニア4年の振り返り", "date": "2026-03-08", "likes": 26, "type": "post" },
+        { "title": "朝のvlog", "date": "2026-03-10", "likes": 14, "type": "reel" },
+        { "title": "日常vlog", "date": "2026-03-12", "likes": 14, "type": "reel" },
+        { "title": "ジャーナリング", "date": "2026-03-15", "likes": 12, "type": "post" },
+        { "title": "週次振り返りreel", "date": "2026-03-23", "likes": 8, "type": "reel" },
+        { "title": "月末reel", "date": "2026-03-30", "likes": 2, "type": "reel" }
+      ]
+    }
+  },
   "review": {
     "sns": "",
     "revenue": 0,
